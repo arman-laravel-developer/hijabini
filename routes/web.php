@@ -114,7 +114,7 @@ Route::get('/order/complete', [App\Http\Controllers\Frontend\CheckoutController:
 Route::post('/customer/order/confirm', [App\Http\Controllers\Frontend\CheckoutController::class, 'customerOrderConfirm']);
 Route::get('/product/delete/form/cart/{id}', [App\Http\Controllers\Frontend\CheckoutController::class, 'cartProductDelete']);
 Route::get('/order-received/{order_id}', [App\Http\Controllers\Frontend\CheckoutController::class, 'customerOrderThankyou']);
-
+Route::post('/customer/order/confirm/manual', [App\Http\Controllers\Frontend\CheckoutController::class, 'customerOrderConfirmManual']);
 Auth::routes();
 
 Route::get('/home', [App\Http\Controllers\HomeController::class, 'index'])->name('home');

@@ -196,7 +196,7 @@
     <div class="page-wrapper">
         <div class="page-content">
             <section class="checkout-section">
-                <form action="{{ url('/customer/order/confirm') }}" method="post" class="form-group billing-address-form"
+                <form action="{{ url('/customer/order/confirm/manual') }}" method="post" class="form-group billing-address-form"
                     enctype="multipart/form-data">
                     @csrf
                     <div class="row">

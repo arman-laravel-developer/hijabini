@@ -141,6 +141,119 @@ class CheckoutController extends Controller
         }
     }
 
+    public function customerOrderConfirmManual(OrderStoreRequest $request)
+    {
+        //===================== Order ======================//
+        //Check the product is dropshipping...
+        if(isset($request->id)){
+            $productIdType = $request->id[0];
+            $product = Product::find($productIdType);
+        }
+        else{
+            return redirect('/')->with('error', 'No Products are choosen!');
+        }
+
+        $totalQty = array_sum($request->indqty);
+        $totalCost = array_sum($request->indprice1)+$request->area;
+        $order = new Order();
+        //$order->user_id = auth('web')->user()->id;
+        if($product->b_product_id == null){
+            $order->is_dropshipping = false;
+        }
+        if($product->b_product_id != null){
+            $order->is_dropshipping = true;
+        }
+        $order->name = $request->name;
+        $order->phone = $request->phone;
+        $order->email = $request->email;
+        $order->area = $request->area;
+        $order->district_id = $request->district_id;
+        $order->sub_district_id = $request->sub_district_id;
+        $order->address = $request->address;
+        $order->orderId = $order->invoiceNumber();
+        $order->price = $totalCost;
+        $order->qty = $totalQty;
+        $order->payment_type = $request->payment_type;
+
+        $order->order_type = $request->order_type;
+
+        $customerCheck = Order::where('phone', $request->phone)->first();
+
+        $order->customer_type = $customerCheck ? 'Old Customer' : 'New Customer';
+
+        //Assign to employee
+        $users = Admin::where('name', '!=', 'admin')->where('is_active', '!=', 0)
+            ->whereDate('limit_updated_at', '!=', \Illuminate\Support\Carbon::today())->get();
+        //dd($users);
+        if($users->isEmpty()){
+            $admin = Admin::first();
+            $order->employee_id = $admin->id;
+        }
+        $session_user = Session::get('id');
+        if($session_user != null && session('name') != 'admin'){
+            $order->employee_id = $session_user;
+        }
+        if($users->isNotEmpty() && $session_user == null){
+            $randomUserId = $users->random()->id;
+            $order->employee_id = $randomUserId;
+
+            $assigned_employee = Admin::find($randomUserId);
+            $assigned_employee_order = Order::where('employee_id', $assigned_employee->id)->whereDate('created_at', \Illuminate\Support\Carbon::today())->count();
+            if($assigned_employee_order >= $assigned_employee->order_limit){
+                $assigned_employee->is_limit = true;
+                $assigned_employee->limit_updated_at = now();
+                $assigned_employee->save();
+            }
+            else{
+                $assigned_employee->is_limit = false;
+                $assigned_employee->save();
+            }
+        }
+        //Assign to employee
+
+        $order->save();
+
+        //===================== Order details ======================//
+
+        if(!empty($order)){
+            foreach($request->id as $key => $product){
+                $productOrder = new OrderDetails();
+                $productOrder->order_id = $order->id;
+                $productOrder->product_id = $request->id[$key];
+                // $productOrder->qty = $request->qty[$key];
+                $productOrder->qty = $request->indqty[$key];
+                // $productOrder->price = $request->total[$key];
+                $productOrder->price = $request->indprice[$key];
+                $productOrder->size = $request->size[$key];
+                $productOrder->color = $request->color[$key];
+                $productOrder->save();
+            }
+        }
+
+        //===================== Product qty update  ======================//
+        $productsQty = Product::where('id', $request->id)->get();
+        foreach ($productsQty as $k => $qty){
+            $qty->qty = $qty->qty - $request->qty[$k];
+            $qty->save();
+        }
+
+
+        //===================== User cart product delete ======================//
+        if(!empty($order)){
+            $cartProduct = Cart::orWhere('user_id', auth()->guard('web')->check() ? auth('web')->user()->id : '')->orWhere('ip_address', request()->ip())->get();
+            foreach($cartProduct as $product){
+                $product->delete();
+            }
+        }
+        $this->setSuccessMessage('Your order has been successfully submitted. Thank you for connecting us.');
+        if($request->order_type == 'Website'){
+            return redirect('/order-received/'.$order->orderId);
+        }
+        else{
+            return redirect('/admin/dashboard');
+        }
+    }
+
     public function customerOrderThankyou ($order_id)
     {
         $order_details = Order::where('orderId', $order_id)->first();
