@@ -147,6 +147,19 @@ class ProductController extends Controller
         }
     }
 
+        public function update(Request $request, $id)
+    {
+        $request->validate([
+            'qty' => 'required|integer|min:1',
+        ]);
+
+        $cart = Cart::findOrFail($id);
+        $cart->qty = $request->qty;
+        $cart->save();
+
+        return response()->json(['success' => true, 'message' => 'Cart updated successfully']);
+    }
+
     public function deleteCart ($id)
     {
         try {
